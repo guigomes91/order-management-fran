@@ -8,8 +8,8 @@ http://localhost:8080/swagger-ui/index.html#/
 
 ## Contexto
 
-Os testes desta pasta servem como evidência de validação da Semana 2.
-O objetivo é provar que os endpoints foram testados visualmente pelo Swagger e que os resultados foram conferidos também no fluxo da aplicação.
+Os testes desta pasta servem como evidencia de validacao da Semana 2.
+O objetivo e provar que os endpoints foram testados visualmente pelo Swagger e que os resultados foram conferidos no fluxo da aplicacao.
 
 ## Teste inicial - POST /products
 
@@ -30,7 +30,7 @@ Resultado observado inicialmente:
 500 Internal Server Error
 ```
 
-Diagnóstico:
+Diagnostico:
 
 ```text
 null value in column "created_at" of relation "products" violates not-null constraint
@@ -39,21 +39,21 @@ null value in column "created_at" of relation "products" violates not-null const
 Causa:
 
 O `CreateProductUseCase` criava o produto com `createdAt = null`.
-Como o Hibernate enviava `created_at = null` no INSERT, o `DEFAULT NOW()` do PostgreSQL não era aplicado.
+Como o Hibernate enviava `created_at = null` no INSERT, o `DEFAULT NOW()` do PostgreSQL nao era aplicado.
 
-Correção aplicada:
+Correcao aplicada:
 
 ```text
 CreateProductUseCase passou a usar LocalDateTime.now() ao criar produto.
 ```
 
-Commit esperado:
+Commit:
 
 ```text
 fix(product): set createdAt when creating product
 ```
 
-## Observações sobre uso do Swagger
+## Observacoes sobre uso do Swagger
 
 ### GET /products
 
@@ -63,7 +63,7 @@ Evitar executar com:
 sort=["string"]
 ```
 
-Esse valor é apenas exemplo do Swagger e causa:
+Esse valor e apenas exemplo do Swagger e causa:
 
 ```text
 No property '["string"]' found for type 'ProductEntity'
@@ -93,7 +93,7 @@ Fluxo correto:
 3. Usar esse id em GET /products/{id}, PUT, PATCH e DELETE
 ```
 
-## Checklist de validação final
+## Checklist de validacao final
 
 - [x] Swagger abriu corretamente
 - [x] POST /products retornou 201
@@ -104,10 +104,10 @@ Fluxo correto:
 - [x] DELETE /products/{id} retornou 204
 - [x] POST duplicado retornou 409
 - [x] GET id inexistente retornou 404
-- [x] POST inválido retornou 400
-- [ ] DBeaver confirmou alterações na tabela products
+- [x] POST invalido retornou 400
+- [ ] DBeaver confirmou alteracoes na tabela products
 
-## Evidência automática - Swagger aberto
+## Evidencia automatica - Swagger aberto
 
 Resultado:
 
@@ -126,43 +126,6 @@ GET /products
 POST /products
 PATCH /products/{id}/stock
 ```
-
-## Evidência automática - POST após correção no código
-
-Após aplicar a correção em `CreateProductUseCase`, foi feita uma chamada automática para:
-
-```text
-POST http://localhost:8080/products
-```
-
-Payload:
-
-```json
-{
-  "name": "Notebook Dell Teste Auto",
-  "description": "Notebook para validacao automatica via Swagger/API",
-  "price": 4500.00,
-  "stockQuantity": 10
-}
-```
-
-Resultado observado:
-
-```text
-STATUS=500
-```
-
-Interpretação:
-
-A aplicação em execução ainda parecia estar usando a versão anterior das classes, pois o erro persistiu mesmo após a correção no código-fonte.
-
-Ação necessária:
-
-```text
-Reiniciar a aplicação pelo IntelliJ para carregar a correção do CreateProductUseCase.
-```
-
-Depois do restart, repetir o teste `POST /products`.
 
 ## Rodada final pelo Swagger apos restart da aplicacao
 
@@ -218,7 +181,7 @@ Resposta observada:
 
 Conclusao:
 
-Correção do `createdAt` validada.
+Correcao do `createdAt` validada.
 
 ### 02 - GET /products
 
@@ -388,7 +351,7 @@ Resposta observada:
 ```json
 {
   "code": "VALIDATION_ERROR",
-  "message": "[price: deve ser maior que ou igual a 0.01, stockQuantity: deve ser maior ou igual a 0, name: não deve estar em branco, name: tamanho deve ser entre 3 e 255]"
+  "message": "[price: deve ser maior que ou igual a 0.01, stockQuantity: deve ser maior ou igual a 0, name: nao deve estar em branco, name: tamanho deve ser entre 3 e 255]"
 }
 ```
 
