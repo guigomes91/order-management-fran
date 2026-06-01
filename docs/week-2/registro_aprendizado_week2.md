@@ -301,3 +301,290 @@ Interpretação:
 - Isso não cria commit.
 - Isso não muda branch.
 - Isso apenas informa ao Git que esse diretório é confiável para o usuário atual.
+
+## Registro 05 - Regra de explicação antes de cada mudança
+
+Decisão:
+
+A partir de agora, toda explicação técnica da Semana 2 deve ser documentada e ensinada no formato de auditoria.
+
+Formato obrigatório:
+
+```text
+1. Vá neste arquivo
+2. Veja que hoje ele está assim
+3. Isso resulta neste problema ou consequência
+4. O que o techlead/material pede
+5. Para resolver, precisamos fazer isto
+6. Posso seguir?
+```
+
+Motivo:
+
+Esse formato ajuda a transformar cada mudança em aprendizado.
+Em vez de apenas alterar código, vamos construir uma justificativa técnica para cada decisão.
+
+Uso futuro:
+
+- estudar antes da reunião com o techlead;
+- explicar por que cada alteração existe;
+- montar a descrição da PR da Semana 2;
+- mostrar que as mudanças seguem o material da mentoria;
+- evitar commits sem contexto.
+
+Exemplo aplicado:
+
+```text
+Vá em ListProductsUseCase.java.
+Hoje ele importa Product da camada infrastructure.persistence.entity.
+Isso faz application depender de infrastructure.
+O material pede que application conheça domain, não infraestrutura.
+Para resolver, precisamos criar Product em domain/model e separar ProductEntity na persistência.
+Antes de alterar, pedimos aprovação.
+```
+
+Regra prática:
+
+Nenhuma alteração estrutural da Semana 2 será feita sem que essa análise seja apresentada antes.
+
+## Registro 06 - Etapa 1: separar Domain Model de Entity JPA
+
+Objetivo:
+
+Corrigir a fronteira arquitetural entre `application` e `infrastructure`.
+
+### Antes da alteração
+
+Arquivo:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/usecase/product/ListProductsUseCase.java
+```
+
+Estava assim:
+
+```java
+import br.com.devpasso.order_management.infrastructure.persistence.entity.Product;
+```
+
+Arquivo:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/port/out/ProductRepositoryPort.java
+```
+
+Também estava assim:
+
+```java
+import br.com.devpasso.order_management.infrastructure.persistence.entity.Product;
+```
+
+Consequência:
+
+A camada `application` dependia de uma classe da camada `infrastructure`.
+Isso fazia o UseCase trabalhar diretamente com uma Entity JPA.
+
+Problema arquitetural:
+
+```text
+application -> infrastructure
+```
+
+Esse fluxo fere a regra central da Clean Architecture usada na mentoria.
+
+### O que o material pede
+
+O material da mentoria define:
+
+```text
+Domain não conhece ninguém.
+Application só conhece Domain.
+Infrastructure conhece todos.
+```
+
+Portanto:
+
+- UseCase deve trabalhar com modelo de domínio;
+- JPA Entity deve ficar restrita à persistência;
+- Adapter deve converter entre domínio e persistência.
+
+### O que foi feito
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/domain/model/Product.java
+```
+
+Esse arquivo agora representa o `Product` de domínio.
+Ele é um `record` Java puro, sem anotação de Spring ou JPA.
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/persistence/entity/ProductEntity.java
+```
+
+Esse arquivo agora representa a tabela `products`.
+Ele tem:
+
+```java
+@Entity
+@Table(name = "products")
+```
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/persistence/mapper/ProductPersistenceMapper.java
+```
+
+Responsabilidade:
+
+```text
+Product domain <-> ProductEntity JPA
+```
+
+Alterado:
+
+```text
+ProductRepositoryPort.java
+ListProductsUseCase.java
+ProductRepositoryAdapter.java
+ProductJpaRepository.java
+ProductWebMapper.java
+```
+
+### Depois da alteração
+
+Agora `application` importa:
+
+```java
+import br.com.devpasso.order_management.domain.model.Product;
+```
+
+E não importa mais:
+
+```java
+br.com.devpasso.order_management.infrastructure.persistence.entity.Product
+```
+
+O fluxo ficou:
+
+```text
+Controller
+-> UseCase
+-> ProductRepositoryPort
+-> ProductRepositoryAdapter
+-> ProductPersistenceMapper
+-> ProductEntity
+-> ProductJpaRepository
+```
+
+Na volta:
+
+```text
+ProductEntity
+-> ProductPersistenceMapper
+-> Product domain
+-> ProductWebMapper
+-> ProductResponse
+```
+
+### Validação feita
+
+Foi executada busca por imports antigos.
+Resultado:
+
+- `application` agora usa `domain.model.Product`;
+- `infrastructure.persistence.entity.ProductEntity` ficou restrito à persistência;
+- `ProductWebMapper` passou a receber `Product` de domínio.
+
+Tentativa de rodar:
+
+```powershell
+cmd /c mvnw.cmd test
+```
+
+Resultado:
+
+```text
+Cannot start maven from wrapper
+```
+
+Interpretação:
+
+O Maven wrapper falhou antes de iniciar o Maven, pelo mesmo problema já observado no ambiente.
+Essa falha não veio da alteração de código.
+
+Validação pendente:
+
+Rodar pelo IntelliJ ou terminal local:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Commit esperado:
+
+```text
+refactor(product): separate domain model from persistence entity
+```
+
+### Correção durante validação - construtores duplicados com Lombok
+
+Ao tentar compilar pelo IntelliJ, apareceu:
+
+```text
+constructor ListProductsUseCase(...) is already defined
+constructor ProductController(...) is already defined
+```
+
+Arquivos envolvidos:
+
+```text
+ListProductsUseCase.java
+ProductController.java
+```
+
+O que havia:
+
+As classes tinham `@RequiredArgsConstructor` e também construtor manual.
+
+Exemplo do problema:
+
+```java
+@RequiredArgsConstructor
+public class ListProductsUseCase {
+
+    private final ProductRepositoryPort repository;
+
+    public ListProductsUseCase(ProductRepositoryPort repository) {
+        this.repository = repository;
+    }
+}
+```
+
+Consequência:
+
+O Lombok gera automaticamente um construtor com os campos `final`.
+Como o construtor manual tinha a mesma assinatura, o Java encontrou dois construtores iguais.
+
+O que o material pede:
+
+Usar `@RequiredArgsConstructor` como padrão para injeção por construtor.
+
+Correção aplicada:
+
+Removidos os construtores manuais e mantido o Lombok.
+
+Arquivos corrigidos:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/usecase/product/ListProductsUseCase.java
+src/main/java/br/com/devpasso/order_management/infrastructure/web/controller/ProductController.java
+```
+
+Como explicar:
+
+> A correção mantém o padrão do projeto com Lombok. Como `@RequiredArgsConstructor` já gera o construtor necessário para os campos `final`, o construtor manual era redundante e causava erro de compilação.
