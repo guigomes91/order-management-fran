@@ -7,6 +7,8 @@ import br.com.devpasso.order_management.domain.model.Product;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class CreateProductUseCase {
@@ -24,7 +26,7 @@ public class CreateProductUseCase {
                 command.description(),
                 command.price(),
                 command.stockQuantity(),
-                null
+                LocalDateTime.now()
         );
 
         return repository.save(product);

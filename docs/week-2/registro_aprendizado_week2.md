@@ -1574,3 +1574,222 @@ Commit esperado:
 ```text
 feat(product): expose product crud endpoints
 ```
+
+## Registro 13 - Correção: createdAt nulo no POST /products
+
+Durante o teste no Swagger:
+
+```text
+POST /products
+```
+
+Payload usado:
+
+```json
+{
+  "name": "Notebook Dell",
+  "description": "Notebook para desenvolvimento Java",
+  "price": 4500.00,
+  "stockQuantity": 10
+}
+```
+
+Resultado observado:
+
+```text
+500 Internal Server Error
+```
+
+Erro principal:
+
+```text
+null value in column "created_at" of relation "products" violates not-null constraint
+```
+
+### Onde estava o problema
+
+Arquivo:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/usecase/product/CreateProductUseCase.java
+```
+
+O produto estava sendo criado com:
+
+```java
+createdAt = null
+```
+
+### Por que o banco não aplicou DEFAULT NOW()
+
+Migration:
+
+```sql
+created_at TIMESTAMP NOT NULL DEFAULT NOW()
+```
+
+O default do PostgreSQL só é aplicado quando a coluna é omitida no `INSERT`.
+Mas o Hibernate estava enviando explicitamente:
+
+```text
+created_at = null
+```
+
+Por isso o PostgreSQL rejeitou o insert.
+
+### Correção aplicada
+
+Alterado:
+
+```text
+CreateProductUseCase.java
+```
+
+Antes:
+
+```java
+null
+```
+
+Depois:
+
+```java
+LocalDateTime.now()
+```
+
+### Como explicar para o techlead
+
+> O bug ocorreu porque a aplicação enviava `created_at` explicitamente como `null`. Como o banco recebeu a coluna no INSERT, o `DEFAULT NOW()` não foi aplicado. Corrigimos no UseCase de criação, garantindo que o domínio já gere um `createdAt` válido ao criar um produto.
+
+Commit esperado:
+
+```text
+fix(product): set createdAt when creating product
+```
+
+## Registro 14 - Estratégia de evidências pelo Swagger
+
+Objetivo:
+
+Criar evidências dos testes executados pelo Swagger para anexar/consultar na PR da Semana 2.
+
+Pasta criada:
+
+```text
+docs/week-2/evidencias-swagger
+```
+
+Evidências planejadas:
+
+```text
+01_swagger_aberto.png
+02_post_products_created.png
+03_get_products_ok.png
+04_get_product_by_id_ok.png
+05_put_product_ok.png
+06_patch_stock_ok.png
+07_delete_product_no_content.png
+08_post_duplicate_conflict.png
+09_get_missing_not_found.png
+10_post_invalid_validation.png
+relatorio-testes-swagger.md
+```
+
+Observação:
+
+Os testes devem ser feitos após reiniciar a aplicação para carregar a correção do `createdAt`.
+
+### Validação parcial executada
+
+O Swagger foi aberto automaticamente em:
+
+```text
+http://localhost:8080/swagger-ui/index.html#/
+```
+
+Resultado:
+
+```text
+Swagger UI carregado
+Products exibido
+Endpoints de CRUD visíveis
+```
+
+Foi feita uma chamada automática para:
+
+```text
+POST http://localhost:8080/products
+```
+
+Payload:
+
+```json
+{
+  "name": "Notebook Dell Teste Auto",
+  "description": "Notebook para validacao automatica via Swagger/API",
+  "price": 4500.00,
+  "stockQuantity": 10
+}
+```
+
+Resultado:
+
+```text
+STATUS=500
+```
+
+Interpretação:
+
+A aplicação em execução provavelmente ainda estava usando a versão antiga das classes, porque a correção já foi aplicada no código-fonte, mas o processo Spring Boot precisa ser reiniciado pelo IntelliJ.
+
+Próxima ação:
+
+```text
+Reiniciar aplicação no IntelliJ
+Reexecutar POST /products
+Salvar evidências finais
+```
+
+### Resultado final dos testes pelo Swagger
+
+Após reiniciar a aplicação no IntelliJ, os testes foram executados visualmente na página:
+
+```text
+http://localhost:8080/swagger-ui/index.html#/
+```
+
+Produto criado:
+
+```text
+Notebook Dell Swagger UI 1780350404688
+```
+
+ID:
+
+```text
+ac2f419e-df0d-4f06-8fce-b55908de07d1
+```
+
+Resultados:
+
+```text
+POST /products -> 201 Created
+GET /products -> 200 OK
+GET /products/{id} -> 200 OK
+PUT /products/{id} -> 200 OK mantendo stockQuantity = 10
+PATCH /products/{id}/stock -> 200 OK alterando stockQuantity para 7
+POST /products duplicado -> 409 BUSINESS_ERROR
+POST /products invalido -> 400 VALIDATION_ERROR
+DELETE /products/{id} -> 204 No Content
+GET /products/{id} apos delete -> 404 NOT_FOUND
+```
+
+Relatório detalhado:
+
+```text
+docs/week-2/evidencias-swagger/relatorio-testes-swagger.md
+```
+
+Conclusão:
+
+A Semana 2 foi validada pelo Swagger UI, incluindo fluxo feliz e cenários de erro padronizados.
