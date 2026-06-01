@@ -1199,3 +1199,195 @@ Commit esperado:
 ```text
 refactor(product): add request to command mapping
 ```
+
+## Registro 11 - Etapa 6: criar UseCases do CRUD de produtos
+
+Objetivo:
+
+Implementar as regras de negócio da Semana 2 na camada `application`, mantendo o Controller sem regra de negócio e sem dependência direta de JPA.
+
+### Antes da alteração
+
+Pasta:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/usecase/product
+```
+
+Continha apenas:
+
+```text
+ListProductsUseCase.java
+```
+
+Consequência:
+
+O projeto só tinha caso de uso para:
+
+```text
+GET /products
+```
+
+Ainda não havia casos de uso para:
+
+```text
+POST /products
+GET /products/{id}
+PUT /products/{id}
+PATCH /products/{id}/stock
+DELETE /products/{id}
+```
+
+### O que o material pede
+
+A Semana 2 pede:
+
+```text
+CreateProductUseCase
+GetProductByIdUseCase
+UpdateProductUseCase
+UpdateProductStockUseCase
+DeleteProductUseCase
+```
+
+Regra arquitetural:
+
+```text
+Controller não tem regra de negócio.
+UseCase depende de Port, não de JpaRepository.
+Um UseCase por caso de uso.
+```
+
+### O que foi criado
+
+Criado:
+
+```text
+CreateProductUseCase.java
+```
+
+Responsabilidade:
+
+```text
+validar nome duplicado
+criar Product de domínio
+salvar pelo ProductRepositoryPort
+```
+
+Erro esperado:
+
+```text
+nome duplicado -> BusinessException -> 409 Conflict
+```
+
+Criado:
+
+```text
+GetProductByIdUseCase.java
+```
+
+Responsabilidade:
+
+```text
+buscar produto por UUID
+lançar ResourceNotFoundException se não existir
+```
+
+Erro esperado:
+
+```text
+id inexistente -> ResourceNotFoundException -> 404 Not Found
+```
+
+Criado:
+
+```text
+UpdateProductUseCase.java
+```
+
+Responsabilidade:
+
+```text
+buscar produto existente
+validar nome duplicado apenas se o nome mudou
+atualizar name, description e price
+manter stockQuantity
+salvar
+```
+
+Regra importante:
+
+```text
+PUT /products/{id} não altera estoque.
+```
+
+Criado:
+
+```text
+UpdateProductStockUseCase.java
+```
+
+Responsabilidade:
+
+```text
+buscar produto existente
+alterar somente stockQuantity
+salvar
+```
+
+Regra importante:
+
+```text
+Estoque tem endpoint próprio: PATCH /products/{id}/stock.
+```
+
+Criado:
+
+```text
+DeleteProductUseCase.java
+```
+
+Responsabilidade:
+
+```text
+buscar produto existente
+deletar pelo ProductRepositoryPort
+```
+
+Erro esperado:
+
+```text
+id inexistente -> ResourceNotFoundException -> 404 Not Found
+```
+
+### Validação arquitetural feita
+
+Foi feita busca nos UseCases.
+
+Resultado:
+
+- UseCases importam `ProductRepositoryPort`;
+- UseCases importam domínio e Commands;
+- UseCases não importam `ProductJpaRepository`;
+- UseCases não importam `ProductEntity`;
+- UseCases não importam Request DTO;
+- UseCases não importam Controller.
+
+### Resultado arquitetural
+
+Fluxo correto:
+
+```text
+Controller
+-> Command
+-> UseCase
+-> ProductRepositoryPort
+-> Adapter
+-> JPA
+```
+
+Commit esperado:
+
+```text
+feat(product): add product crud use cases
+```
