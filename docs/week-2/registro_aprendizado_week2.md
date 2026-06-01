@@ -890,3 +890,187 @@ Commit esperado:
 ```text
 feat(error): add standardized api error handling
 ```
+
+## Registro 09 - Etapa 4: criar Request DTOs e Commands
+
+Objetivo:
+
+Separar o formato HTTP recebido pelo Controller dos dados usados pelos UseCases.
+
+### Antes da alteração
+
+O projeto ainda não tinha DTOs de request para a Semana 2.
+
+Também foi feita busca por:
+
+```text
+spring-boot-starter-validation
+jakarta.validation
+@Valid
+```
+
+Resultado:
+
+Não havia dependência de Bean Validation no `pom.xml`.
+
+### Consequência
+
+A Semana 2 exige validações como:
+
+```java
+@NotBlank
+@NotNull
+@DecimalMin("0.01")
+@PositiveOrZero
+@Size
+```
+
+Sem `spring-boot-starter-validation`, essas validações não ficam disponíveis corretamente para os DTOs e para o `@Valid` no Controller.
+
+### O que o material pede
+
+O material da Semana 2 define:
+
+```text
+Validação de entrada é responsabilidade do DTO de request, acionada pelo @Valid no Controller.
+O UseCase não valida formato - ele aplica regra de negócio.
+```
+
+Separação esperada:
+
+```text
+Request DTO -> Command -> UseCase
+```
+
+Forma errada:
+
+```text
+UseCase recebendo CreateProductRequest
+```
+
+Forma correta:
+
+```text
+Controller recebe CreateProductRequest
+Mapper converte para CreateProductCommand
+UseCase recebe CreateProductCommand
+```
+
+### O que foi alterado no pom.xml
+
+Adicionada dependência:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
+```
+
+Motivo:
+
+Habilitar as anotações de Bean Validation usadas nos DTOs de entrada.
+
+### O que foi criado na camada web
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/web/request/CreateProductRequest.java
+```
+
+Campos:
+
+```text
+name
+description
+price
+stockQuantity
+```
+
+Validações:
+
+```text
+name -> @NotBlank + @Size(min = 3, max = 255)
+price -> @NotNull + @DecimalMin("0.01")
+stockQuantity -> @NotNull + @PositiveOrZero
+```
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/web/request/UpdateProductRequest.java
+```
+
+Campos:
+
+```text
+name
+description
+price
+```
+
+Observação:
+
+Esse request não tem estoque porque o material define que `PUT /products/{id}` não altera estoque.
+Estoque será alterado apenas pelo endpoint:
+
+```text
+PATCH /products/{id}/stock
+```
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/web/request/UpdateStockRequest.java
+```
+
+Campo:
+
+```text
+quantity
+```
+
+Validação:
+
+```text
+@NotNull
+@PositiveOrZero
+```
+
+### O que foi criado na camada application
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/dto/command/CreateProductCommand.java
+```
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/dto/command/UpdateProductCommand.java
+```
+
+Responsabilidade:
+
+Transportar dados do Controller para os UseCases sem acoplar a camada `application` ao pacote `infrastructure/web/request`.
+
+### Resultado arquitetural
+
+Fronteira correta:
+
+```text
+Web Request DTO
+-> Web Mapper
+-> Application Command
+-> UseCase
+```
+
+Assim o UseCase continua independente de HTTP.
+
+Commit esperado:
+
+```text
+feat(product): add product request dtos and commands
+```
