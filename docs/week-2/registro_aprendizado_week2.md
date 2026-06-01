@@ -730,3 +730,163 @@ Commit esperado:
 ```text
 refactor(product): expand product repository port for crud
 ```
+
+## Registro 08 - Etapa 3: criar erro padronizado da API
+
+Objetivo:
+
+Criar a base de tratamento de erro antes dos novos UseCases da Semana 2.
+
+### Antes da alteração
+
+Foi feita busca por:
+
+```text
+Exception
+ErrorResponse
+RestControllerAdvice
+BusinessException
+ResourceNotFound
+```
+
+Resultado:
+
+Não havia tratamento de erro padronizado no projeto.
+
+Consequência:
+
+Ao criar endpoints como:
+
+```text
+GET /products/{id}
+POST /products
+PUT /products/{id}
+DELETE /products/{id}
+```
+
+os erros poderiam ficar espalhados no Controller ou cair em respostas genéricas do Spring.
+
+### O que o material pede
+
+A Semana 2 pede:
+
+```text
+GlobalExceptionHandler
+ErrorResponse
+ResourceNotFoundException
+BusinessException
+```
+
+Com status:
+
+```text
+400 - erro de validação
+404 - recurso não encontrado
+409 - conflito/regra de negócio
+```
+
+### O que foi criado
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/domain/exception/BusinessException.java
+```
+
+Uso esperado:
+
+```text
+Nome de produto duplicado -> 409 Conflict
+```
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/domain/exception/ResourceNotFoundException.java
+```
+
+Uso esperado:
+
+```text
+Produto inexistente -> 404 Not Found
+```
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/web/response/ErrorResponse.java
+```
+
+Contrato de erro:
+
+```java
+public record ErrorResponse(String code, String message) {}
+```
+
+Criado:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/web/handler/GlobalExceptionHandler.java
+```
+
+Responsabilidade:
+
+Converter exceções esperadas em JSON padronizado.
+
+### Respostas padronizadas
+
+`ResourceNotFoundException`:
+
+```json
+{
+  "code": "NOT_FOUND",
+  "message": "Produto não encontrado: ..."
+}
+```
+
+`BusinessException`:
+
+```json
+{
+  "code": "BUSINESS_ERROR",
+  "message": "Produto com nome ... já existe"
+}
+```
+
+`MethodArgumentNotValidException`:
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "[name: não deve estar em branco]"
+}
+```
+
+### Resultado arquitetural
+
+O Controller não precisa tratar exceções manualmente.
+Os UseCases podem lançar exceções de domínio/aplicação e a camada web transforma isso em HTTP.
+
+Fluxo:
+
+```text
+UseCase lança exceção
+-> GlobalExceptionHandler captura
+-> API responde JSON padronizado
+```
+
+### Observação para a próxima etapa
+
+Quando criarmos os Request DTOs com `@Valid`, talvez seja necessário adicionar a dependência:
+
+```xml
+spring-boot-starter-validation
+```
+
+Isso será analisado antes da etapa de DTOs.
+
+Commit esperado:
+
+```text
+feat(error): add standardized api error handling
+```
