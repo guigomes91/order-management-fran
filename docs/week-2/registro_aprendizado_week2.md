@@ -1391,3 +1391,186 @@ Commit esperado:
 ```text
 feat(product): add product crud use cases
 ```
+
+## Registro 12 - Etapa 7: expor endpoints CRUD no ProductController
+
+Objetivo:
+
+Expor via HTTP os UseCases criados para a Semana 2, mantendo o Controller fino e sem regra de negócio.
+
+### Antes da alteração
+
+Arquivo:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/web/controller/ProductController.java
+```
+
+Tinha apenas:
+
+```text
+GET /products
+```
+
+Dependências no Controller:
+
+```java
+private final ListProductsUseCase listProductsUseCase;
+private final ProductWebMapper mapper;
+```
+
+Consequência:
+
+Mesmo com os UseCases criados, eles ainda não eram acessíveis pela API.
+
+### O que o material pede
+
+A Semana 2 pede:
+
+```text
+POST /products              -> 201 Created
+GET /products               -> 200 OK
+GET /products/{id}          -> 200 OK
+PUT /products/{id}          -> 200 OK
+PATCH /products/{id}/stock  -> 200 OK
+DELETE /products/{id}       -> 204 No Content
+```
+
+Também pede:
+
+```text
+@Valid nos DTOs de request
+ResponseEntity com status correto
+Controller sem regra de negócio
+Swagger atualizado com @Operation
+```
+
+### O que foi alterado
+
+Alterado:
+
+```text
+ProductController.java
+```
+
+Foram injetados os UseCases:
+
+```java
+CreateProductUseCase
+GetProductByIdUseCase
+ListProductsUseCase
+UpdateProductUseCase
+UpdateProductStockUseCase
+DeleteProductUseCase
+```
+
+### Endpoints adicionados
+
+Adicionado:
+
+```text
+POST /products
+```
+
+Fluxo:
+
+```text
+CreateProductRequest
+-> mapper.toCommand(request)
+-> CreateProductUseCase
+-> mapper.toResponse(created)
+-> 201 Created
+```
+
+Adicionado:
+
+```text
+GET /products/{id}
+```
+
+Fluxo:
+
+```text
+UUID id
+-> GetProductByIdUseCase
+-> mapper.toResponse(product)
+-> 200 OK
+```
+
+Adicionado:
+
+```text
+PUT /products/{id}
+```
+
+Fluxo:
+
+```text
+UpdateProductRequest
+-> mapper.toCommand(request)
+-> UpdateProductUseCase
+-> mapper.toResponse(updated)
+-> 200 OK
+```
+
+Regra:
+
+```text
+PUT não altera estoque.
+```
+
+Adicionado:
+
+```text
+PATCH /products/{id}/stock
+```
+
+Fluxo:
+
+```text
+UpdateStockRequest
+-> UpdateProductStockUseCase
+-> mapper.toResponse(updated)
+-> 200 OK
+```
+
+Regra:
+
+```text
+PATCH /stock altera somente estoque.
+```
+
+Adicionado:
+
+```text
+DELETE /products/{id}
+```
+
+Fluxo:
+
+```text
+UUID id
+-> DeleteProductUseCase
+-> 204 No Content
+```
+
+### Resultado arquitetural
+
+O Controller faz apenas:
+
+```text
+receber HTTP
+validar entrada com @Valid
+converter request para command
+chamar UseCase
+converter domain para response
+retornar status HTTP
+```
+
+As regras continuam nos UseCases.
+
+Commit esperado:
+
+```text
+feat(product): expose product crud endpoints
+```
