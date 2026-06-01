@@ -1074,3 +1074,128 @@ Commit esperado:
 ```text
 feat(product): add product request dtos and commands
 ```
+
+## Registro 10 - Etapa 5: adicionar mapeamento Request DTO para Command
+
+Objetivo:
+
+Preparar o Controller para converter entradas HTTP em Commands da camada application sem colocar regra de conversão no próprio Controller.
+
+### Antes da alteração
+
+Arquivo:
+
+```text
+src/main/java/br/com/devpasso/order_management/infrastructure/web/mapper/ProductWebMapper.java
+```
+
+Estava assim:
+
+```java
+public ProductResponse toResponse(Product product) {
+    return new ProductResponse(...);
+}
+```
+
+Ou seja, o mapper só fazia:
+
+```text
+Product domain -> ProductResponse
+```
+
+### Consequência
+
+Depois que criamos:
+
+```text
+CreateProductRequest
+UpdateProductRequest
+CreateProductCommand
+UpdateProductCommand
+```
+
+faltava a conversão:
+
+```text
+Request DTO -> Command
+```
+
+Sem isso, o Controller teria que montar Commands manualmente.
+Isso deixaria o Controller menos limpo e com responsabilidade de conversão.
+
+### O que o material pede
+
+A Semana 2 reforça a separação:
+
+```text
+Request DTO: camada web
+Command: camada application
+UseCase: regra de negócio
+```
+
+Fluxo desejado:
+
+```text
+Controller recebe Request
+ProductWebMapper converte Request em Command
+UseCase recebe Command
+```
+
+### O que foi alterado
+
+Alterado:
+
+```text
+ProductWebMapper.java
+```
+
+Adicionado:
+
+```java
+public CreateProductCommand toCommand(CreateProductRequest request)
+```
+
+Esse método converte:
+
+```text
+CreateProductRequest -> CreateProductCommand
+```
+
+Adicionado:
+
+```java
+public UpdateProductCommand toCommand(UpdateProductRequest request)
+```
+
+Esse método converte:
+
+```text
+UpdateProductRequest -> UpdateProductCommand
+```
+
+### Resultado arquitetural
+
+O Controller poderá ficar com esta forma:
+
+```text
+recebe request
+mapper.toCommand(request)
+useCase.execute(command)
+mapper.toResponse(product)
+retorna HTTP
+```
+
+O UseCase continua sem conhecer:
+
+```text
+CreateProductRequest
+UpdateProductRequest
+HTTP
+Controller
+```
+
+Commit esperado:
+
+```text
+refactor(product): add request to command mapping
+```
