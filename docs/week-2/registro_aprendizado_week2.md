@@ -588,3 +588,145 @@ src/main/java/br/com/devpasso/order_management/infrastructure/web/controller/Pro
 Como explicar:
 
 > A correção mantém o padrão do projeto com Lombok. Como `@RequiredArgsConstructor` já gera o construtor necessário para os campos `final`, o construtor manual era redundante e causava erro de compilação.
+
+## Registro 07 - Etapa 2: expandir ProductRepositoryPort para o CRUD
+
+Objetivo:
+
+Preparar a camada `application` para os casos de uso da Semana 2 sem fazer UseCase conhecer Spring Data JPA.
+
+### Antes da alteração
+
+Arquivo:
+
+```text
+src/main/java/br/com/devpasso/order_management/application/port/out/ProductRepositoryPort.java
+```
+
+Estava assim:
+
+```java
+public interface ProductRepositoryPort {
+
+    Page<Product> findAll(Pageable pageable);
+
+}
+```
+
+Consequência:
+
+O contrato de persistência só permitia listar produtos.
+Isso era suficiente para a Semana 1, mas não para a Semana 2.
+
+### O que a Semana 2 pede
+
+A Semana 2 precisa dos endpoints:
+
+```text
+POST /products
+GET /products/{id}
+PUT /products/{id}
+PATCH /products/{id}/stock
+DELETE /products/{id}
+```
+
+Para isso, os UseCases precisam conseguir:
+
+- salvar produto;
+- buscar produto por ID;
+- verificar nome duplicado;
+- listar produtos;
+- deletar produto.
+
+### O que o material/techlead pede
+
+O UseCase deve depender de interface, não de implementação concreta.
+
+Forma correta:
+
+```text
+UseCase -> ProductRepositoryPort
+Adapter -> ProductJpaRepository
+```
+
+Forma errada:
+
+```text
+UseCase -> ProductJpaRepository
+```
+
+### O que foi feito
+
+Alterado:
+
+```text
+ProductRepositoryPort.java
+```
+
+Agora o contrato possui:
+
+```java
+Product save(Product product);
+Optional<Product> findById(UUID id);
+boolean existsByName(String name);
+Page<Product> findAll(Pageable pageable);
+void delete(Product product);
+```
+
+Alterado:
+
+```text
+ProductJpaRepository.java
+```
+
+Adicionado:
+
+```java
+boolean existsByNameIgnoreCase(String name);
+```
+
+Motivo:
+
+O Spring Data JPA consegue implementar esse método automaticamente pelo nome.
+Ele será usado para validar regra de negócio de nome duplicado.
+
+Alterado:
+
+```text
+ProductRepositoryAdapter.java
+```
+
+Agora ele implementa os novos métodos do Port e faz as conversões:
+
+```text
+Product domain -> ProductEntity -> banco
+banco -> ProductEntity -> Product domain
+```
+
+### Resultado arquitetural
+
+`application` continua sem conhecer `ProductEntity`.
+
+O JPA continua restrito à infraestrutura:
+
+```text
+application/port/out/ProductRepositoryPort.java -> domain.model.Product
+infrastructure/persistence/adapter -> converte domain/entity
+infrastructure/persistence/repository -> ProductEntity
+```
+
+### Validação feita
+
+Foi feita busca por imports de infraestrutura.
+Resultado:
+
+- `ProductRepositoryPort` usa `domain.model.Product`;
+- `ProductRepositoryAdapter` usa `ProductPersistenceMapper`;
+- `ProductJpaRepository` usa `ProductEntity`;
+- não foi introduzida dependência de JPA nos UseCases.
+
+Commit esperado:
+
+```text
+refactor(product): expand product repository port for crud
+```
